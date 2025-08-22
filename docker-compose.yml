@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  av-cart:
+    build: .
+    container_name: av-cart-server
+    ports:
+      - "127.0.0.1:8021:8000"
+    volumes:
+      - ./av-cart-configurator.html:/srv/index.html:ro
+    restart: unless-stopped
+    user: "1000:1000"
