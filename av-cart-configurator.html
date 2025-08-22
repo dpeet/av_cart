@@ -1,0 +1,1179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AV Cart Configurator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        
+        .panel {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        h2 {
+            color: #555;
+            margin: 20px 0 10px 0;
+            font-size: 18px;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 5px;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 500px;
+            background: #f0f0f0;
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .control-group label {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        
+        .control-group input[type="range"] {
+            width: 100%;
+        }
+        
+        .control-group input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .toggle-btn {
+            padding: 10px 15px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s;
+        }
+        
+        .toggle-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-2px);
+        }
+        
+        .toggle-btn.active {
+            background: #48bb78;
+        }
+        
+        .parts-list {
+            max-height: 100vh;
+            overflow-y: auto;
+        }
+        
+        .parts-category {
+            margin-bottom: 20px;
+        }
+        
+        .part-item {
+            display: grid;
+            grid-template-columns: 3fr 1fr 1fr 1fr;
+            gap: 10px;
+            padding: 8px;
+            background: #f7f7f7;
+            margin-bottom: 5px;
+            border-radius: 4px;
+            font-size: 14px;
+            align-items: center;
+        }
+        
+        .part-item:hover {
+            background: #e8e8e8;
+        }
+        
+        .part-header {
+            font-weight: bold;
+            background: #667eea;
+            color: white;
+        }
+        
+        .part-desc {
+            font-size: 12px;
+            color: #666;
+        }
+        
+        .total-cost {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+            text-align: right;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 2px solid #ddd;
+        }
+        
+        .supplier-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .stat-card {
+            background: #f7f7f7;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #667eea;
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .info-box {
+            background: #f0f4ff;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .info-box h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            font-size: 16px;
+        }
+        
+        .info-box ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        
+        .info-box li {
+            padding: 4px 0;
+            font-size: 14px;
+            color: #555;
+        }
+        
+        .info-box li:before {
+            content: "✓ ";
+            color: #48bb78;
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="panel">
+            <h1>🎬 AV Cart 3D Configurator</h1>
+            <div id="canvas-container"></div>
+            
+            <div class="controls">
+                <button class="toggle-btn" id="lid-toggle">Open Hood</button>
+                <button class="toggle-btn" id="wings-toggle">Extend Wings</button>
+                <button class="toggle-btn" id="panels-toggle">Open Side Panels</button>
+                <button class="toggle-btn" id="rotate-toggle">Auto Rotate</button>
+                <button class="toggle-btn" id="labels-toggle">Hide Labels</button>
+            </div>
+            
+            <h2>Dimensions</h2>
+            <div class="controls">
+                <div class="control-group">
+                    <label>Width (inches)</label>
+                    <input type="number" id="width" value="36" min="24" max="36">
+                </div>
+                <div class="control-group">
+                    <label>Depth (inches)</label>
+                    <input type="number" id="depth" value="30" min="24" max="48">
+                </div>
+                <div class="control-group">
+                    <label>Height (inches)</label>
+                    <input type="number" id="height" value="48" min="36" max="62">
+                </div>
+            </div>
+            
+            <div class="stats">
+                <div class="stat-card">
+                    <div class="stat-value" id="weight-stat">~95 lbs</div>
+                    <div class="stat-label">Total Weight</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="footprint-stat">7.5 ft²</div>
+                    <div class="stat-label">Footprint</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="ada-stat">✅ ADA</div>
+                    <div class="stat-label">Elevator Access</div>
+                </div>
+            </div>
+            
+            <div class="info-box">
+                <h3>Key Features</h3>
+                <ul>
+                    <li>Hood-style lid with 3 sides for full access</li>
+                    <li>Tascam Model 12 & Rodecaster Video side by side</li>
+                    <li>Slide-out laptop wings (stored underneath)</li>
+                    <li>Cable panels pivot 90° from rear</li>
+                    <li>Power strip mounts on rear right upright</li>
+                    <li>Bottom storage with front/back panels</li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="panel">
+            <h1>📋 Parts List & Cost Calculator</h1>
+            
+            <div class="supplier-toggle">
+                <button class="toggle-btn active" id="tnutz">TNUTZ Pricing (-30%)</button>
+                <button class="toggle-btn" id="8020">8020 Inc Pricing</button>
+            </div>
+            
+            <div class="parts-list" id="parts-list">
+                <!-- Parts will be generated here -->
+            </div>
+            
+            <div class="total-cost" id="total-cost">
+                Total: $0
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Three.js Scene Setup
+        let scene, camera, renderer, cart, controls;
+        let isRotating = false;
+        let lidOpen = false;
+        let wingsExtended = false;
+        let panelsOpen = false;
+        let currentSupplier = 'tnutz';
+        let labelsVisible = true;
+        
+        // Cart components
+        let lidGroup, leftWing, rightWing, leftPanel, rightPanel;
+        let labels = [];
+        
+        // Configuration constants
+        const CONFIG = {
+            PROFILE_SIZE: 1.0,  // 1010 profile size
+            WORK_SURFACE_LEVEL_FROM_TOP: 12.0,  // Distance from top to work surface
+            CASTER_HEIGHT: 4.0,
+            CASTER_RADIUS: 2.0,
+            TASCAM_DIMS: { w: 13.5, h: 3.9, d: 14.2 },  // Tascam Model 12 dimensions
+            RODE_DIMS: { w: 12.0, h: 2.4, d: 5.2 },  // Rodecaster Video dimensions
+            OPERATOR_EQUIPMENT_OFFSET: -3.0,  // Move equipment towards operator
+            ALUMINUM_WEIGHT_PER_FOOT: 0.25,  // 1010-UL profile weight (lbs/ft)
+            MONITOR_HEIGHT: 10.0,
+            WING_RETRACTION_DIVISOR: 2.2,  // For calculating wing positions
+            LABEL_OFFSET: 5.0,  // Distance of labels from cart edges
+        };
+        
+        // Pricing data (updated for 1010 profile based on 2024/2025 research)
+        const pricing = {
+            tnutz: {
+                '1010_per_inch': 0.31,  // Based on $14.90 for 48" = $0.31/inch
+                'corner_bracket': 2.25,  // 10-series brackets are slightly cheaper
+                'hinge': 12.00,  // Piano/continuous hinges for cable panels
+                't_nut': 0.85,
+                'caster': 25.00,  // 4" heavy-duty locking casters (more realistic retail price)
+                'drawer_slide': 32.00,  // 18" heavy-duty full extension
+                'gas_strut': 15.00,  // 22 lb force gas struts (more common/cheaper)
+                'panel_sqft': 7.50,
+                'power_strip': 32.00,
+                'cable_hook': 2.25,
+                'screws_bolts': 0.15  // Per fastener average
+            },
+            '8020': {
+                '1010_per_inch': 0.48,  // 80/20 typically 50-60% more than TNUTZ
+                'corner_bracket': 5.50,
+                'hinge': 18.00,
+                't_nut': 1.35,
+                'caster': 35.00,  // Higher quality industrial casters
+                'drawer_slide': 42.00,
+                'gas_strut': 25.00,
+                'panel_sqft': 11.00,
+                'power_strip': 42.00,
+                'cable_hook': 3.50,
+                'screws_bolts': 0.25
+            }
+        };
+        
+        function init() {
+            // Scene setup
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+            
+            // Camera setup - positioned to view from front
+            camera = new THREE.PerspectiveCamera(
+                50,
+                document.getElementById('canvas-container').clientWidth / 500,
+                0.1,
+                1000
+            );
+            camera.position.set(80, 60, -80);  // Negative Z to view from front
+            camera.lookAt(0, 20, 0);
+            
+            // Renderer setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(
+                document.getElementById('canvas-container').clientWidth,
+                500
+            );
+            renderer.shadowMap.enabled = true;
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
+            
+            // Add OrbitControls for mouse interaction
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 50;
+            controls.maxDistance = 200;
+            controls.maxPolarAngle = Math.PI / 2;
+            
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+            
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.4);
+            directionalLight.position.set(50, 100, 50);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Add grid
+            const gridHelper = new THREE.GridHelper(100, 20, 0x888888, 0xcccccc);
+            scene.add(gridHelper);
+            
+            // Create cart
+            createCart();
+            
+            // Start animation
+            animate();
+        }
+        
+        // Helper function to create text labels that always face camera
+        function createLabel(text, position, color = 0xffffff) {
+            const canvas = document.createElement('canvas');
+            const context = canvas.getContext('2d');
+            canvas.width = 512;
+            canvas.height = 128;
+            
+            // Clear background
+            context.fillStyle = 'rgba(0, 0, 0, 0.8)';
+            context.fillRect(0, 0, 512, 128);
+            
+            // Add border
+            context.strokeStyle = `#${color.toString(16).padStart(6, '0')}`;
+            context.lineWidth = 4;
+            context.strokeRect(2, 2, 508, 124);
+            
+            // Draw text
+            context.font = 'Bold 48px Arial';
+            context.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+            context.textAlign = 'center';
+            context.textBaseline = 'middle';
+            context.fillText(text, 256, 64);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            
+            const spriteMaterial = new THREE.SpriteMaterial({ 
+                map: texture,
+                sizeAttenuation: false
+            });
+            const sprite = new THREE.Sprite(spriteMaterial);
+            sprite.scale.set(0.15, 0.04, 1);  // Smaller scale for screen space
+            sprite.position.copy(position);
+            return sprite;
+        }
+        
+        function createCart() {
+            // Clear existing cart and labels
+            if (cart) {
+                scene.remove(cart);
+            }
+            labels.forEach(label => scene.remove(label));
+            labels = [];
+            
+            cart = new THREE.Group();
+            
+            const width = parseFloat(document.getElementById('width').value);
+            const depth = parseFloat(document.getElementById('depth').value);
+            const height = parseFloat(document.getElementById('height').value);
+            
+            // Convert inches to Three.js units (1 inch = 1 unit)
+            const w = width;
+            const d = depth;
+            const h = height;
+            
+            // Frame material (aluminum color)
+            const frameMaterial = new THREE.MeshPhongMaterial({ color: 0xc0c0c0 });
+            const panelMaterial = new THREE.MeshPhongMaterial({ 
+                color: 0x555555,
+                transparent: true,
+                opacity: 0.9
+            });
+            const equipmentMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            
+            // Profile size for 1010 (1" x 1")
+            const profileSize = 1.0;
+            
+            // === FRAME CONSTRUCTION ===
+            
+            // Vertical posts - front posts go to work surface rail center, back posts full height
+            const workSurfaceHeight = h - CONFIG.WORK_SURFACE_LEVEL_FROM_TOP + profileSize/2;  // To center of work surface rail
+            
+            // Front posts (shortened)
+            const frontPostGeometry = new THREE.BoxGeometry(profileSize, workSurfaceHeight, profileSize);
+            const frontLeftPost = new THREE.Mesh(frontPostGeometry, frameMaterial);
+            frontLeftPost.position.set(-w/2 + profileSize/2, workSurfaceHeight/2, -d/2 + profileSize/2);
+            cart.add(frontLeftPost);
+            
+            const frontRightPost = new THREE.Mesh(frontPostGeometry, frameMaterial);
+            frontRightPost.position.set(w/2 - profileSize/2, workSurfaceHeight/2, -d/2 + profileSize/2);
+            cart.add(frontRightPost);
+            
+            // Back posts (full height)
+            const backPostGeometry = new THREE.BoxGeometry(profileSize, h, profileSize);
+            const backLeftPost = new THREE.Mesh(backPostGeometry, frameMaterial);
+            backLeftPost.position.set(-w/2 + profileSize/2, h/2, d/2 - profileSize/2);
+            cart.add(backLeftPost);
+            
+            const backRightPost = new THREE.Mesh(backPostGeometry, frameMaterial);
+            backRightPost.position.set(w/2 - profileSize/2, h/2, d/2 - profileSize/2);
+            cart.add(backRightPost);
+            
+            // Add post labels (Operator stands at negative Z, facing the cart)
+            // Operator's right = cart's negative X, Operator's left = cart's positive X
+            const frLabel = createLabel('Op-FR', new THREE.Vector3(-w/2 - CONFIG.LABEL_OFFSET, workSurfaceHeight/2, -d/2 - CONFIG.LABEL_OFFSET), 0x88ff88);  // Front-Right from operator view
+            const flLabel = createLabel('Op-FL', new THREE.Vector3(w/2 + CONFIG.LABEL_OFFSET, workSurfaceHeight/2, -d/2 - CONFIG.LABEL_OFFSET), 0x88ff88);   // Front-Left from operator view
+            const brLabel = createLabel('Op-BR', new THREE.Vector3(-w/2 - CONFIG.LABEL_OFFSET, h/2, d/2 + CONFIG.LABEL_OFFSET), 0x88ff88);  // Back-Right from operator view
+            const blLabel = createLabel('Op-BL', new THREE.Vector3(w/2 + CONFIG.LABEL_OFFSET, h/2, d/2 + CONFIG.LABEL_OFFSET), 0x88ff88);  // Back-Left from operator view
+            labels.push(flLabel, frLabel, blLabel, brLabel);
+            if (labelsVisible) {
+                scene.add(flLabel);
+                scene.add(frLabel);
+                scene.add(blLabel);
+                scene.add(brLabel);
+            }
+            
+            // Horizontal rails at different levels
+            const railLevels = [
+                profileSize/2,      // Bottom
+                h/3,               // Mid level (drawer level)
+                h - 12,            // Work surface level
+                h - profileSize/2  // Top
+            ];
+            
+            railLevels.forEach((y, index) => {
+                // Add level labels
+                const levelNames = ['L0 (Base)', 'L1 (Storage)', 'L2 (Work)', 'L3 (Top)'];
+                const levelLabel = createLabel(levelNames[index], new THREE.Vector3(-w/2 - 10, y, 0), 0xffff88);
+                labels.push(levelLabel);
+                if (labelsVisible) scene.add(levelLabel);
+                
+                // Determine which rails to add based on level
+                // Level 0: All 4 rails (base)
+                // Level 1: Front and back only (no sides)
+                // Level 2: Side rails only (work surface support)
+                // Level 3: Back rail only (hood hinge)
+                
+                const railGeometry = new THREE.BoxGeometry(w - 2*profileSize, profileSize, profileSize);
+                const sideRailGeometry = new THREE.BoxGeometry(profileSize, profileSize, d - 2*profileSize);
+                
+                if (index === 0) {
+                    // Bottom level: all 4 rails
+                    const frontRail = new THREE.Mesh(railGeometry, frameMaterial);
+                    frontRail.position.set(0, y, -d/2 + profileSize/2);
+                    cart.add(frontRail);
+                    
+                    const backRail = new THREE.Mesh(railGeometry, frameMaterial);
+                    backRail.position.set(0, y, d/2 - profileSize/2);
+                    cart.add(backRail);
+                    
+                    const leftRail = new THREE.Mesh(sideRailGeometry, frameMaterial);
+                    leftRail.position.set(-w/2 + profileSize/2, y, 0);
+                    cart.add(leftRail);
+                    
+                    const rightRail = new THREE.Mesh(sideRailGeometry, frameMaterial);
+                    rightRail.position.set(w/2 - profileSize/2, y, 0);
+                    cart.add(rightRail);
+                } else if (index === 1) {
+                    // Storage level: front and back rails only
+                    const frontRail = new THREE.Mesh(railGeometry, frameMaterial);
+                    frontRail.position.set(0, y, -d/2 + profileSize/2);
+                    cart.add(frontRail);
+                    
+                    const backRail = new THREE.Mesh(railGeometry, frameMaterial);
+                    backRail.position.set(0, y, d/2 - profileSize/2);
+                    cart.add(backRail);
+                } else if (index === 2) {
+                    // Work surface level: side rails only
+                    const leftRail = new THREE.Mesh(sideRailGeometry, frameMaterial);
+                    leftRail.position.set(-w/2 + profileSize/2, y, 0);
+                    cart.add(leftRail);
+                    
+                    const rightRail = new THREE.Mesh(sideRailGeometry, frameMaterial);
+                    rightRail.position.set(w/2 - profileSize/2, y, 0);
+                    cart.add(rightRail);
+                } else if (index === 3) {
+                    // Top level: back rail only (for hood hinge support)
+                    const backRail = new THREE.Mesh(railGeometry, frameMaterial);
+                    backRail.position.set(0, y, d/2 - profileSize/2);
+                    cart.add(backRail);
+                }
+            });
+            
+            // === WORK SURFACE ===
+            const surfaceGeometry = new THREE.BoxGeometry(w - 2*profileSize, 1, d - 2*profileSize);
+            const surface = new THREE.Mesh(surfaceGeometry, panelMaterial);
+            surface.position.set(0, h - 12, 0);
+            cart.add(surface);
+            
+            // === EQUIPMENT ===
+            // Tascam Model 12 (left side when viewed from front)
+            const tascamGeometry = new THREE.BoxGeometry(CONFIG.TASCAM_DIMS.w, CONFIG.TASCAM_DIMS.h, CONFIG.TASCAM_DIMS.d);
+            const tascamMaterial = new THREE.MeshPhongMaterial({ color: 0x333333 });
+            const tascam = new THREE.Mesh(tascamGeometry, tascamMaterial);
+            tascam.position.set(-9, h - CONFIG.WORK_SURFACE_LEVEL_FROM_TOP + CONFIG.TASCAM_DIMS.h/2, CONFIG.OPERATOR_EQUIPMENT_OFFSET);  // Moved forward toward operator
+            cart.add(tascam);
+            
+            // Rodecaster Video (right side when viewed from front)
+            const rodeGeometry = new THREE.BoxGeometry(CONFIG.RODE_DIMS.w, CONFIG.RODE_DIMS.h, CONFIG.RODE_DIMS.d);
+            const rodeMaterial = new THREE.MeshPhongMaterial({ color: 0xff0000 });
+            const rode = new THREE.Mesh(rodeGeometry, rodeMaterial);
+            rode.position.set(9, h - CONFIG.WORK_SURFACE_LEVEL_FROM_TOP + CONFIG.RODE_DIMS.h/2, CONFIG.OPERATOR_EQUIPMENT_OFFSET);  // Moved forward toward operator
+            cart.add(rode);
+            
+            // === HOOD-STYLE LID ===
+            lidGroup = new THREE.Group();
+            lidGroup.position.set(0, h - profileSize, d/2 - profileSize); // Position at back edge (pivot point)
+            
+            // Top panel of lid - FULL WIDTH of cart
+            const lidTopGeometry = new THREE.BoxGeometry(w, 1, d);  // Full external width
+            const lidTop = new THREE.Mesh(lidTopGeometry, panelMaterial);
+            lidTop.position.set(0, 0, -d/2);
+            lidGroup.add(lidTop);
+            
+            // Front panel of lid (faces operator when closed, rests ON the side rails)
+            // Distance from pivot to work surface rail: (h - profileSize) - (h - 12) = 12 - profileSize
+            const lidFrontHeight = 12 - profileSize - 0.5; // Height to rest exactly on the side rail (with small clearance)
+            const lidFrontGeometry = new THREE.BoxGeometry(w - 0.5, lidFrontHeight, 1);  // Nearly full width with tiny clearance
+            const lidFront = new THREE.Mesh(lidFrontGeometry, panelMaterial);
+            lidFront.position.set(0, -lidFrontHeight/2 - 0.5, -d + 0.5);  // Adjusted to rest on rail
+            lidGroup.add(lidFront);
+            
+            // Left side panel of lid (full external dimension)
+            const lidSideGeometry = new THREE.BoxGeometry(1, lidFrontHeight, d);
+            const lidLeft = new THREE.Mesh(lidSideGeometry, panelMaterial);
+            lidLeft.position.set(-w/2 + 0.5, -lidFrontHeight/2 - 0.5, -d/2);
+            lidGroup.add(lidLeft);
+            
+            // Right side panel of lid (full external dimension)
+            const lidRight = new THREE.Mesh(lidSideGeometry, panelMaterial);
+            lidRight.position.set(w/2 - 0.5, -lidFrontHeight/2 - 0.5, -d/2);
+            lidGroup.add(lidRight);
+            
+            // Monitor (mounted inside lid facing operator)
+            const monitorGeometry = new THREE.BoxGeometry(15, 8, 0.5);  // Slightly smaller to fit
+            const monitorMaterial = new THREE.MeshPhongMaterial({ color: 0x000000 });
+            const monitor = new THREE.Mesh(monitorGeometry, monitorMaterial);
+            monitor.position.set(0, -lidFrontHeight/2 - 0.5, -d + 2);  // Positioned on inside of front panel
+            lidGroup.add(monitor);
+            
+            cart.add(lidGroup);
+            
+            // === SLIDE-OUT WINGS (Parameterized) ===
+            // Wings fit between frame when retracted, extend for additional work surface
+            const wingWidth = (w - 4*profileSize) / CONFIG.WING_RETRACTION_DIVISOR;  // Slightly smaller to fit when retracted
+            const wingDepth = d - 4*profileSize;  // Match cart depth minus frame
+            const wingGeometry = new THREE.BoxGeometry(wingWidth, 0.5, wingDepth);
+            const wingMaterial = new THREE.MeshPhongMaterial({ color: 0x666666 });
+            
+            leftWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            leftWing.position.set(-wingWidth/2 - profileSize*2, h - 14, 0);
+            cart.add(leftWing);
+            
+            rightWing = new THREE.Mesh(wingGeometry, wingMaterial);
+            rightWing.position.set(wingWidth/2 + profileSize*2, h - 14, 0);
+            cart.add(rightWing);
+            
+            // Add wing labels (from operator's perspective)
+            const wingRLabel = createLabel('Wing R', new THREE.Vector3(-w/2, h - 14, -d/2 - 8), 0x8888ff);  // Left side is right from operator view
+            const wingLLabel = createLabel('Wing L', new THREE.Vector3(w/2, h - 14, -d/2 - 8), 0x8888ff);   // Right side is left from operator view
+            labels.push(wingLLabel, wingRLabel);
+            if (labelsVisible) {
+                scene.add(wingLLabel);
+                scene.add(wingRLabel);
+            }
+            
+            // === SIDE CABLE PANELS (Parameterized, pivot from back) ===
+            // Panels span from L0 to L2 (no side rails at L1)
+            const panelHeight = (h - 12) - profileSize;  // From bottom to work surface
+            const panelDepth = d - 2*profileSize;  // Full depth between front/back posts
+            const panelGeometry = new THREE.BoxGeometry(0.5, panelHeight, panelDepth);
+            
+            leftPanel = new THREE.Group();
+            const leftPanelMesh = new THREE.Mesh(panelGeometry, panelMaterial);
+            leftPanelMesh.position.set(0, 0, -panelDepth/2);
+            leftPanel.add(leftPanelMesh);
+            leftPanel.position.set(-w/2 + profileSize, panelHeight/2 + profileSize, d/2 - profileSize);
+            cart.add(leftPanel);
+            
+            rightPanel = new THREE.Group();
+            const rightPanelMesh = new THREE.Mesh(panelGeometry, panelMaterial);
+            rightPanelMesh.position.set(0, 0, -panelDepth/2);
+            rightPanel.add(rightPanelMesh);
+            rightPanel.position.set(w/2 - profileSize, panelHeight/2 + profileSize, d/2 - profileSize);
+            cart.add(rightPanel);
+            
+            // Add panel labels (from operator's perspective)
+            const cableRLabel = createLabel('Cable R', new THREE.Vector3(-w/2 - 8, panelHeight/2, d/2), 0xff8888);  // Left side is right from operator view
+            const cableLLabel = createLabel('Cable L', new THREE.Vector3(w/2 + 8, panelHeight/2, d/2), 0xff8888);   // Right side is left from operator view
+            labels.push(cableLLabel, cableRLabel);
+            if (labelsVisible) {
+                scene.add(cableLLabel);
+                scene.add(cableRLabel);
+            }
+            
+            // === BOTTOM COMPARTMENT PANELS ===
+            // Front panel
+            const bottomFrontGeometry = new THREE.BoxGeometry(w - 2*profileSize, h/3 - 2*profileSize, 0.5);
+            const bottomFront = new THREE.Mesh(bottomFrontGeometry, panelMaterial);
+            bottomFront.position.set(0, h/6, -d/2 + profileSize);
+            cart.add(bottomFront);
+            
+            // Back panel  
+            const bottomBack = new THREE.Mesh(bottomFrontGeometry, panelMaterial);
+            bottomBack.position.set(0, h/6, d/2 - profileSize);
+            cart.add(bottomBack);
+            
+            // === POWER STRIP (on rear right upright) ===
+            const powerStripGeometry = new THREE.BoxGeometry(2, 12, 3);
+            const powerStripMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const powerStrip = new THREE.Mesh(powerStripGeometry, powerStripMaterial);
+            powerStrip.position.set(w/2 - profileSize - 2, h/2, d/2 - profileSize - 2);
+            cart.add(powerStrip);
+            
+            // === FRONT INDICATOR (small handle/label to show orientation) ===
+            const handleGeometry = new THREE.BoxGeometry(8, 1, 1);
+            const handleMaterial = new THREE.MeshPhongMaterial({ color: 0x888888 });
+            const handle = new THREE.Mesh(handleGeometry, handleMaterial);
+            handle.position.set(0, h - 6, -d/2 - 1);  // Front center, just below work surface
+            cart.add(handle);
+            
+            // === CASTERS ===
+            const casterGeometry = new THREE.CylinderGeometry(CONFIG.CASTER_RADIUS, CONFIG.CASTER_RADIUS, CONFIG.CASTER_HEIGHT);
+            const casterMaterial = new THREE.MeshPhongMaterial({ color: 0x222222 });
+            const casterPositions = [
+                [-w/2 + 3, -CONFIG.CASTER_HEIGHT/2, -d/2 + 3],
+                [w/2 - 3, -CONFIG.CASTER_HEIGHT/2, -d/2 + 3],
+                [-w/2 + 3, -CONFIG.CASTER_HEIGHT/2, d/2 - 3],
+                [w/2 - 3, -CONFIG.CASTER_HEIGHT/2, d/2 - 3]
+            ];
+            
+            casterPositions.forEach(pos => {
+                const caster = new THREE.Mesh(casterGeometry, casterMaterial);
+                caster.position.set(...pos);
+                cart.add(caster);
+            });
+            
+            scene.add(cart);
+            
+            updatePartsList();
+            updateStats();
+        }
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update controls
+            if (controls) {
+                controls.update();
+            }
+            
+            if (isRotating && cart) {
+                cart.rotation.y += 0.005;
+            }
+            
+            // Animate lid (hood style - rotates from back to open toward front)
+            if (lidGroup) {
+                const targetRotation = lidOpen ? Math.PI / 2.5 : 0;  // Positive rotation to open forward
+                lidGroup.rotation.x += (targetRotation - lidGroup.rotation.x) * 0.1;
+            }
+            
+            // Animate wings (using dynamic dimensions)
+            if (leftWing && rightWing) {
+                const width = parseFloat(document.getElementById('width').value);
+                const profileSize = 1.0;
+                const wingWidth = (width - 4*profileSize) / CONFIG.WING_RETRACTION_DIVISOR;
+                
+                const leftRetracted = -wingWidth/2 - profileSize*2;
+                const rightRetracted = wingWidth/2 + profileSize*2;
+                const leftExtended = -width/2 - wingWidth/2;
+                const rightExtended = width/2 + wingWidth/2;
+                
+                const leftTarget = wingsExtended ? leftExtended : leftRetracted;
+                const rightTarget = wingsExtended ? rightExtended : rightRetracted;
+                
+                leftWing.position.x += (leftTarget - leftWing.position.x) * 0.1;
+                rightWing.position.x += (rightTarget - rightWing.position.x) * 0.1;
+            }
+            
+            // Animate panels (rotate from back edge)
+            if (leftPanel && rightPanel) {
+                const targetRotation = panelsOpen ? Math.PI / 2 : 0;
+                leftPanel.rotation.y += (targetRotation - leftPanel.rotation.y) * 0.1;
+                rightPanel.rotation.y += (-targetRotation - rightPanel.rotation.y) * 0.1;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        function updatePartsList() {
+            const width = parseFloat(document.getElementById('width').value);
+            const depth = parseFloat(document.getElementById('depth').value);
+            const height = parseFloat(document.getElementById('height').value);
+            
+            const parts = calculateParts(width, depth, height);
+            const prices = pricing[currentSupplier];
+            
+            let html = '';
+            let total = 0;
+            
+            // Frame Components
+            html += '<div class="parts-category">';
+            html += '<h2>Frame Components (1010 Profile)</h2>';
+            html += '<div class="part-item part-header"><div>Component</div><div>Quantity</div><div>Unit Price</div><div>Total</div></div>';
+            
+            parts.frame.forEach(part => {
+                const unitPrice = prices[part.priceKey];
+                const partTotal = unitPrice * part.quantity;
+                total += partTotal;
+                html += `<div class="part-item">
+                    <div>
+                        <div>${part.name}</div>
+                        <div class="part-desc">${part.description}</div>
+                    </div>
+                    <div>${part.quantity}${part.unit || ''}</div>
+                    <div>$${unitPrice.toFixed(2)}</div>
+                    <div>$${partTotal.toFixed(2)}</div>
+                </div>`;
+            });
+            html += '</div>';
+            
+            // Hardware
+            html += '<div class="parts-category">';
+            html += '<h2>Hardware & Mechanisms</h2>';
+            html += '<div class="part-item part-header"><div>Component</div><div>Quantity</div><div>Unit Price</div><div>Total</div></div>';
+            
+            parts.hardware.forEach(part => {
+                const unitPrice = prices[part.priceKey];
+                const partTotal = unitPrice * part.quantity;
+                total += partTotal;
+                html += `<div class="part-item">
+                    <div>
+                        <div>${part.name}</div>
+                        <div class="part-desc">${part.description}</div>
+                    </div>
+                    <div>${part.quantity}</div>
+                    <div>$${unitPrice.toFixed(2)}</div>
+                    <div>$${partTotal.toFixed(2)}</div>
+                </div>`;
+            });
+            html += '</div>';
+            
+            // Panels & Accessories
+            html += '<div class="parts-category">';
+            html += '<h2>Panels & Accessories</h2>';
+            html += '<div class="part-item part-header"><div>Component</div><div>Quantity</div><div>Unit Price</div><div>Total</div></div>';
+            
+            parts.panels.forEach(part => {
+                const unitPrice = prices[part.priceKey];
+                const partTotal = unitPrice * part.quantity;
+                total += partTotal;
+                html += `<div class="part-item">
+                    <div>
+                        <div>${part.name}</div>
+                        <div class="part-desc">${part.description}</div>
+                    </div>
+                    <div>${part.quantity}${part.unit || ''}</div>
+                    <div>$${unitPrice.toFixed(2)}</div>
+                    <div>$${partTotal.toFixed(2)}</div>
+                </div>`;
+            });
+            html += '</div>';
+            
+            document.getElementById('parts-list').innerHTML = html;
+            document.getElementById('total-cost').innerHTML = `Total: $${total.toFixed(2)}`;
+        }
+        
+        function calculateParts(width, depth, height) {
+            const parts = {
+                frame: [],
+                hardware: [],
+                panels: []
+            };
+            
+            // Frame calculations - All 1010 profile (1" x 1")
+            
+            // Vertical posts - 2 front shortened, 2 back full height
+            const workSurfaceHeight = height - 12 + 0.5;  // To center of work surface rail (profileSize/2)
+            const frontPostInches = 2 * workSurfaceHeight;
+            const backPostInches = 2 * height;
+            const verticalInches = frontPostInches + backPostInches;
+            parts.frame.push({
+                name: 'Vertical Posts (1010)',
+                description: `2 front × ${workSurfaceHeight}" + 2 back × ${height}" = ${verticalInches}" total`,
+                quantity: Math.ceil(verticalInches),
+                unit: '"',
+                priceKey: '1010_per_inch'
+            });
+            
+            // Horizontal rails (updated configuration)
+            // Level 0: All 4 rails
+            // Level 1: Front and back only (no sides)
+            // Level 2: Side rails only
+            // Level 3: Back rail only
+            const level0Rails = 2 * width + 2 * depth;  // All 4 rails
+            const level1Rails = 2 * width;  // Front and back only
+            const level2Rails = 2 * depth;  // Sides only
+            const level3Rails = width;  // Back only
+            const horizontalInches = level0Rails + level1Rails + level2Rails + level3Rails;
+            parts.frame.push({
+                name: 'Horizontal Rails (1010)',
+                description: `L0 all + L1 front/back + L2 sides + L3 back = ${horizontalInches}" total`,
+                quantity: horizontalInches,
+                unit: '"',
+                priceKey: '1010_per_inch'
+            });
+            
+            // Wing support rails - calculated based on wing dimensions
+            const wingRailLength = 18;  // Length of drawer slides
+            const wingRailTotal = 4 * wingRailLength;  // 4 rails for 2 wings
+            parts.frame.push({
+                name: 'Wing Support Rails (1010)',
+                description: `4 × ${wingRailLength}" for slide-out wings`,
+                quantity: wingRailTotal,
+                unit: '"',
+                priceKey: '1010_per_inch'
+            });
+            
+            // Hardware (10-series specific)
+            // Corner brackets: 4 corners × 3 levels with connections = 24 brackets
+            // (Not all levels have all corners due to open design)
+            const cornerBrackets = 24;  // More realistic count
+            parts.hardware.push({
+                name: 'Corner Brackets (10-series)',
+                description: '4-hole brackets for frame connections',
+                quantity: cornerBrackets,
+                priceKey: 'corner_bracket'
+            });
+            
+            parts.hardware.push({
+                name: 'T-Nuts (10-series)',
+                description: 'For 1010 profile T-slots',
+                quantity: 100,
+                priceKey: 't_nut'
+            });
+            
+            parts.hardware.push({
+                name: '4" Locking Casters',
+                description: '200 lb capacity each',
+                quantity: 4,
+                priceKey: 'caster'
+            });
+            
+            parts.hardware.push({
+                name: 'Heavy-Duty Drawer Slides',
+                description: '18" full extension for wings',
+                quantity: 2,
+                priceKey: 'drawer_slide'
+            });
+            
+            parts.hardware.push({
+                name: 'Gas Struts',
+                description: '22 lb force for hood lid (100N)',
+                quantity: 2,
+                priceKey: 'gas_strut'
+            });
+            
+            parts.hardware.push({
+                name: 'Piano Hinges',
+                description: 'For cable panel pivots',
+                quantity: 2,
+                priceKey: 'hinge'
+            });
+            
+            parts.hardware.push({
+                name: 'Power Strip w/ Surge Protection',
+                description: 'Rack-mount style, 8 outlets',
+                quantity: 1,
+                priceKey: 'power_strip'
+            });
+            
+            // Panels - more accurate calculations
+            const topArea = (width * depth) / 144; // Work surface
+            
+            // Hood lid: top panel + front panel + 2 side panels
+            const lidFrontHeight = 12 - 1;  // Height from work surface to top (minus profile)
+            const lidTopArea = (width * depth) / 144;
+            const lidFrontArea = (width * lidFrontHeight) / 144;
+            const lidSideArea = (depth * lidFrontHeight * 2) / 144;
+            const lidArea = lidTopArea + lidFrontArea + lidSideArea;
+            
+            // Cable panels: actual height from bottom to work surface
+            const panelHeight = height - 12;  // From bottom to work surface
+            const panelDepth = depth - 2;  // Accounting for frame
+            const sideArea = (panelHeight * panelDepth * 2) / 144;  // Two panels
+            
+            // Bottom storage panels: front and back only
+            const bottomPanelHeight = height / 3;  // Storage compartment height
+            const bottomArea = (width * bottomPanelHeight * 2) / 144; // Front and back
+            
+            parts.panels.push({
+                name: 'Work Surface',
+                description: `${width}" × ${depth}" main surface`,
+                quantity: Math.ceil(topArea),
+                unit: ' sq ft',
+                priceKey: 'panel_sqft'
+            });
+            
+            parts.panels.push({
+                name: 'Hood Lid Assembly',
+                description: 'Top + front + 2 sides',
+                quantity: Math.ceil(lidArea),
+                unit: ' sq ft',
+                priceKey: 'panel_sqft'
+            });
+            
+            parts.panels.push({
+                name: 'Cable Access Panels',
+                description: '2 side panels with cable hooks',
+                quantity: Math.ceil(sideArea),
+                unit: ' sq ft',
+                priceKey: 'panel_sqft'
+            });
+            
+            parts.panels.push({
+                name: 'Bottom Storage Panels',
+                description: 'Front and back enclosure',
+                quantity: Math.ceil(bottomArea),
+                unit: ' sq ft',
+                priceKey: 'panel_sqft'
+            });
+            
+            // Wing panels calculation
+            const wingWidth = 12;  // inches
+            const wingDepth = 18;  // inches  
+            const wingPanelArea = (wingWidth * wingDepth * 2) / 144;  // Two wings
+            parts.panels.push({
+                name: 'Wing Panels',
+                description: `2 × ${wingWidth}" × ${wingDepth}" slide-outs`,
+                quantity: Math.ceil(wingPanelArea),
+                unit: ' sq ft',
+                priceKey: 'panel_sqft'
+            });
+            
+            parts.panels.push({
+                name: 'Cable Management Hooks',
+                description: 'For side panel organization',
+                quantity: 20,
+                priceKey: 'cable_hook'
+            });
+            
+            // Assembly hardware
+            parts.hardware.push({
+                name: 'Screws & Bolts',
+                description: 'M5 bolts and self-tapping screws for assembly',
+                quantity: 200,
+                priceKey: 'screws_bolts'
+            });
+            
+            return parts;
+        }
+        
+        function updateStats() {
+            const width = parseFloat(document.getElementById('width').value);
+            const depth = parseFloat(document.getElementById('depth').value);
+            const height = parseFloat(document.getElementById('height').value);
+            
+            // Calculate weight estimate (with 1010 profile - lighter than 1515)
+            const workSurfaceHeight = height - CONFIG.WORK_SURFACE_LEVEL_FROM_TOP + 0.5;  // To center of rail
+            const verticalInches = (2 * workSurfaceHeight) + (2 * height);  // 2 short + 2 tall posts
+            const level0Rails = 2 * width + 2 * depth;
+            const level1Rails = 2 * width;
+            const level2Rails = 2 * depth;
+            const level3Rails = width;
+            const horizontalInches = level0Rails + level1Rails + level2Rails + level3Rails;
+            const totalAluminumInches = verticalInches + horizontalInches + 72;  // +72 for wing supports
+            const aluminumWeight = (totalAluminumInches / 12) * CONFIG.ALUMINUM_WEIGHT_PER_FOOT; // 1010-UL is ~0.25 lbs/ft
+            const panelWeight = 15; // Estimated panel weight
+            const equipmentWeight = 42; // From your research
+            const hardwareWeight = 25; // Casters, brackets, etc.
+            const totalWeight = Math.round(aluminumWeight + panelWeight + equipmentWeight + hardwareWeight);
+            
+            // Calculate footprint
+            const footprint = (width * depth) / 144;
+            
+            // Check elevator compliance (36" doors need 32" max cart width for clearance)
+            const elevatorCompliant = width <= 36 && depth <= 36;
+            
+            document.getElementById('weight-stat').textContent = `~${totalWeight} lbs`;
+            document.getElementById('footprint-stat').textContent = `${footprint.toFixed(1)} ft²`;
+            document.getElementById('ada-stat').textContent = elevatorCompliant ? '✅ ADA' : '❌ Too Large';
+            document.getElementById('ada-stat').style.color = elevatorCompliant ? '#48bb78' : '#f56565';
+        }
+        
+        // Event Listeners
+        document.getElementById('lid-toggle').addEventListener('click', function() {
+            lidOpen = !lidOpen;
+            this.classList.toggle('active');
+            this.textContent = lidOpen ? 'Close Hood' : 'Open Hood';
+        });
+        
+        document.getElementById('wings-toggle').addEventListener('click', function() {
+            wingsExtended = !wingsExtended;
+            this.classList.toggle('active');
+            this.textContent = wingsExtended ? 'Retract Wings' : 'Extend Wings';
+        });
+        
+        document.getElementById('panels-toggle').addEventListener('click', function() {
+            panelsOpen = !panelsOpen;
+            this.classList.toggle('active');
+            this.textContent = panelsOpen ? 'Close Panels' : 'Open Panels';
+        });
+        
+        document.getElementById('rotate-toggle').addEventListener('click', function() {
+            isRotating = !isRotating;
+            this.classList.toggle('active');
+        });
+        
+        document.getElementById('labels-toggle').addEventListener('click', function() {
+            labelsVisible = !labelsVisible;
+            this.classList.toggle('active');
+            this.textContent = labelsVisible ? 'Hide Labels' : 'Show Labels';
+            
+            // Toggle label visibility
+            labels.forEach(label => {
+                if (labelsVisible) {
+                    scene.add(label);
+                } else {
+                    scene.remove(label);
+                }
+            });
+        });
+        
+        // Cache DOM elements (must be done before using them)
+        const tnutzBtn = document.getElementById('tnutz');
+        const eightyTwentyBtn = document.getElementById('8020');
+        
+        tnutzBtn.addEventListener('click', function() {
+            currentSupplier = 'tnutz';
+            this.classList.add('active');
+            eightyTwentyBtn.classList.remove('active');
+            updatePartsList();
+        });
+        
+        eightyTwentyBtn.addEventListener('click', function() {
+            currentSupplier = '8020';
+            this.classList.add('active');
+            tnutzBtn.classList.remove('active');
+            updatePartsList();
+        });
+        
+        // Dimension change listeners with validation
+        ['width', 'depth', 'height'].forEach(id => {
+            const inputEl = document.getElementById(id);
+            let lastValidValue = inputEl.value; // Store initial value
+            
+            inputEl.addEventListener('change', function() {
+                const value = parseFloat(this.value);
+                const min = parseFloat(this.min);
+                const max = parseFloat(this.max);
+                
+                if (isNaN(value) || value < min || value > max) {
+                    alert(`Invalid value for ${id}. Please enter a number between ${min} and ${max}.`);
+                    this.value = lastValidValue; // Revert to last known good value
+                    return;
+                }
+                
+                lastValidValue = this.value;
+                createCart();
+            });
+        });
+        
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            const container = document.getElementById('canvas-container');
+            camera.aspect = container.clientWidth / 500;
+            camera.updateProjectionMatrix();
+            renderer.setSize(container.clientWidth, 500);
+        });
+        
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
